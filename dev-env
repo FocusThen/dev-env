@@ -52,8 +52,8 @@ copy_file() {
   execute cp $from $to/$name
 }
 
-copy_dir .config "$HOME/.config"
-copy_dir .local "$HOME/.local"
+copy_dir .config $HOME/.config
+copy_dir .local $HOME/.local
 
 copy_file .tmux.conf $HOME
 copy_file .zsh_profile $HOME
