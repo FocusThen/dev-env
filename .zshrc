@@ -75,8 +75,8 @@ plugins=(zsh-autosuggestions)
 bindkey '^ ' autosuggest-accept
 
 source $ZSH/oh-my-zsh.sh
-source ~/.zsh_profile
-source "$HOME/go/bin"
+source $HOME/.zsh_profile
+source $HOME/go/bin
 
 
 # User configuration
