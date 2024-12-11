@@ -1,0 +1,50 @@
+#!/bin/bash
+
+
+vpn_connect() {
+    local code2fa="2457$(2fa 'mgc')"
+    osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
+    -e 'click' \
+    -e 'get menu items of menu 1' \
+    -e '
+      try
+        click menu item "Connect" of menu 1
+        do shell script "echo OpenVPN ready to connect"
+      on error
+        key code 53
+        do shell script "echo Already connected"
+      end try' \
+    -e "
+  delay 0.5
+  set textBuffer to \"$code2fa\"
+  repeat with i from 1 to count characters of textBuffer
+    keystroke (character i of textBuffer)
+    delay 0.05
+  end repeat"\
+    -e 'keystroke return'\
+   -e 'end tell'
+  # -e 'tell application "System Events" to keystroke "w" using command down'\
+}
+
+vpn_disconnect() {
+    osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
+    -e 'click' \
+    -e 'get menu items of menu 1' \
+    -e '
+      try
+        click menu item "Disconnect" of menu 1
+      on error
+        key code 53
+      end try' \
+    -e 'end tell'
+}
+
+# if -c is passed, disconnect all connections before connecting to the new one
+if [ "$1" == "-c" ]; then
+    vpn_connect;
+fi
+
+# if -x is passed, disconnect all connections
+if [ "$1" == "-x" ]; then
+    vpn_disconnect;
+fi
