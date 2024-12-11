@@ -53,7 +53,7 @@ copy_file() {
 }
 
 copy_dir .config "$HOME/.config"
-copy_dir .local $HOME
+copy_dir .local "$HOME/.local"
 
 copy_file .tmux.conf $HOME
 copy_file .zsh_profile $HOME
