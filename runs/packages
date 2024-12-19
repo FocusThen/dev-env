@@ -1,0 +1,4 @@
+#!/bin/bash
+
+brew install neovim tmux lua luajit luarocks fzf
+
