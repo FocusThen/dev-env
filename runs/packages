@@ -1,4 +1,8 @@
 #!/bin/bash
 
-brew install neovim tmux lua luajit luarocks fzf
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  brew install neovim tmux lua luajit luarocks fzf
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  sudo apt-get install neovim tmux lua luajit luarocks fzf
+fi
 
