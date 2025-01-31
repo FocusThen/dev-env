@@ -11,3 +11,7 @@ bindkey -s ^f "tmux-sessionizer\n"
 
 # Brew
 eval $(/opt/homebrew/bin/brew shellenv)
+
+
+# Fuck
+eval $(thefuck --alias)
