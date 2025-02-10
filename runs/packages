@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  brew install git neovim tmux lua luajit luarocks fzf yazi ripgrep make zsh-autosuggestions zsh-syntax-highlighting
+  brew install git neovim tmux lua luajit luarocks fzf yazi ripgrep make zsh-autosuggestions zsh-syntax-highlighting libpq
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   sudo apt-get install neovim tmux lua luajit luarocks fzf
 fi
