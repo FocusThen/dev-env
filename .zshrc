@@ -24,4 +24,9 @@ export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 # JAVA
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 
+# C & C++
+export CPATH="/opt/homebrew/include"
+export LIBRARY_PATH="/opt/homebrew/lib"
+
+
 
