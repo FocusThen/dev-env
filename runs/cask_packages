@@ -1,5 +1,5 @@
 #!/bin/bash
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  brew install --cack ghostty brave-browser spotify rectangle font-fira-code-nerd-font
+  brew install --cack ghostty brave-browser spotify nikitabobko/tap/aerospace font-fira-code-nerd-font
 fi
