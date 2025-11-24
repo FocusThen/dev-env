@@ -10,7 +10,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   brew install bear
   brew install luarocks
   brew install fzf
-  brew install yazi
   brew install make
   brew install btop
   brew install zsh-autosuggestions
