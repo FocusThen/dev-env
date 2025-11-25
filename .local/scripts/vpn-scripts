@@ -16,26 +16,26 @@ get_state() {
   fi
 }
 
-# Verify if OpenVPN is actually connected by checking the app state
+# Verify if OpenVPN is actually connected by checking system state
 verify_actual_connection() {
-  # Check if OpenVPN Connect process is running
-  if ! pgrep -f "OpenVPN Connect" > /dev/null; then
-    return 1
-  fi
-
-  # Check the actual menu bar status via AppleScript
-  local status
-  status=$(osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
-    -e 'get title of menu bar item 1 of menu bar 2' \
-    -e 'end tell' 2>/dev/null || echo "")
-
-  # If menu bar shows "Connected" or similar, return success
-  if [[ "$status" =~ [Cc]onnect ]]; then
+  # VPN interfaces have IPv4 addresses, system utun interfaces only have IPv6
+  local utun_with_ipv4
+  utun_with_ipv4=$(ifconfig 2>/dev/null | grep -B1 'inet [0-9]' | grep -E '^utun[0-9]+:' | head -1)
+  if [[ -n "$utun_with_ipv4" ]]; then
     return 0
   fi
 
-  # Alternative: Check for VPN network interfaces
-  if ifconfig 2>/dev/null | grep -qE '^utun[0-9]+:.*status: active'; then
+  # Only check IPv4 routes (ignore IPv6 which system utun interfaces use)
+  local ipv4_utun_routes
+  ipv4_utun_routes=$(netstat -rn -f inet 2>/dev/null | awk '{print $NF}' | grep -E '^utun[0-9]+$' | head -1)
+  if [[ -n "$ipv4_utun_routes" ]]; then
+    return 0
+  fi
+
+  # Check if default IPv4 route goes through utun (some VPNs do this)
+  local default_route
+  default_route=$(netstat -rn -f inet 2>/dev/null | awk '/^default|^0\.0\.0\.0/ {print $NF; exit}')
+  if [[ -n "$default_route" ]] && [[ "$default_route" =~ ^utun[0-9]+$ ]]; then
     return 0
   fi
 
@@ -52,6 +52,16 @@ get_status() {
       # State file says connected but actually disconnected - update it
       set_state "disconnected"
       echo "disconnected"
+      return
+    fi
+  fi
+
+  # If stored state is "disconnected", also verify (to catch manual connections)
+  if [[ "$stored_state" == "disconnected" ]]; then
+    if verify_actual_connection; then
+      # State file says disconnected but actually connected - update it
+      set_state "connected"
+      echo "connected"
       return
     fi
   fi
@@ -82,8 +92,12 @@ vpn_connect() {
     -e 'keystroke return' \
     -e 'end tell'
 
-  if [[ $? -eq 0 ]]; then
+  # Wait a moment for connection to establish, then verify
+  sleep 2
+  if verify_actual_connection; then
     set_state "connected"
+  else
+    set_state "disconnected"
   fi
 }
 
@@ -98,8 +112,12 @@ vpn_disconnect() {
       end try' \
     -e 'end tell'
 
-  if [[ $? -eq 0 ]]; then
+  # Wait a moment for disconnection, then verify
+  sleep 1
+  if ! verify_actual_connection; then
     set_state "disconnected"
+  else
+    set_state "connected"
   fi
 }
 
