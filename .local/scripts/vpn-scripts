@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -euo pipefail
 
 STATE_FILE="/tmp/vpn-scripts-state"
@@ -15,44 +16,86 @@ get_state() {
   fi
 }
 
+# Verify if OpenVPN is actually connected by checking the app state
+verify_actual_connection() {
+  # Check if OpenVPN Connect process is running
+  if ! pgrep -f "OpenVPN Connect" > /dev/null; then
+    return 1
+  fi
+
+  # Check the actual menu bar status via AppleScript
+  local status
+  status=$(osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
+    -e 'get title of menu bar item 1 of menu bar 2' \
+    -e 'end tell' 2>/dev/null || echo "")
+
+  # If menu bar shows "Connected" or similar, return success
+  if [[ "$status" =~ [Cc]onnect ]]; then
+    return 0
+  fi
+
+  # Alternative: Check for VPN network interfaces
+  if ifconfig 2>/dev/null | grep -qE '^utun[0-9]+:.*status: active'; then
+    return 0
+  fi
+
+  return 1
+}
+
+get_status() {
+  local stored_state
+  stored_state=$(get_state)
+
+  # If stored state is "connected", verify it's actually connected
+  if [[ "$stored_state" == "connected" ]]; then
+    if ! verify_actual_connection; then
+      # State file says connected but actually disconnected - update it
+      set_state "disconnected"
+      echo "disconnected"
+      return
+    fi
+  fi
+
+  echo "$stored_state"
+}
+
 vpn_connect() {
-    local code2fa="2457$(2fa 'mgc')"
-    osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
+  local code2fa
+  code2fa="2457$(2fa 'mgc')"
+
+  osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
     -e 'click' \
     -e 'get menu items of menu 1' \
-    -e '
-      try
+    -e 'try
         click menu item "Connect" of menu 1
         do shell script "echo OpenVPN ready to connect"
       on error
         key code 53
         do shell script "echo Already connected"
       end try' \
-    -e "
-  delay 0.5
-  set textBuffer to \"$code2fa\"
-  repeat with i from 1 to count characters of textBuffer
-    keystroke (character i of textBuffer)
-    delay 0.05
-  end repeat"\
-    -e 'keystroke return'\
-   -e 'end tell'
-  # -e 'tell application "System Events" to keystroke "w" using command down'\
+    -e "delay 0.5
+        set textBuffer to \"$code2fa\"
+        repeat with i from 1 to count characters of textBuffer
+          keystroke (character i of textBuffer)
+          delay 0.05
+        end repeat" \
+    -e 'keystroke return' \
+    -e 'end tell'
+
   if [[ $? -eq 0 ]]; then
     set_state "connected"
   fi
 }
 
 vpn_disconnect() {
-    osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
-      -e 'click' \
-      -e 'get menu items of menu 1' \
-      -e '
-    try
-    click menu item "Disconnect" of menu 1
-    on error
-    key code 53
-  end try' \
+  osascript -e 'tell application "System Events" to tell process "OpenVPN Connect" to tell menu bar item 1 of menu bar 2' \
+    -e 'click' \
+    -e 'get menu items of menu 1' \
+    -e 'try
+        click menu item "Disconnect" of menu 1
+      on error
+        key code 53
+      end try' \
     -e 'end tell'
 
   if [[ $? -eq 0 ]]; then
@@ -61,11 +104,13 @@ vpn_disconnect() {
 }
 
 show_usage() {
-    echo "Usage: $0 [-c|-x|-s]"
-    echo "  -c  Connect to VPN"
-    echo "  -x  Disconnect from VPN"
-    echo "  -s  Check VPN status (instant)"
-    exit 1
+  cat << EOF
+Usage: $0 [-c|-x|-s]
+  -c  Connect to VPN
+  -x  Disconnect from VPN
+  -s  Check VPN status (verifies actual connection)
+EOF
+  exit 1
 }
 
 # Main execution
@@ -77,7 +122,7 @@ case "${1:-}" in
     vpn_disconnect
     ;;
   -s)
-    get_state
+    get_status
     ;;
   *)
     show_usage
